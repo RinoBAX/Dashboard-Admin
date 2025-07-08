@@ -16,7 +16,7 @@ const AdminWithdrawalsPage = ({ token }) => {
     // Hook kustom untuk melakukan panggilan API
     const useApi = (token) => {
         return useCallback(async (endpoint, method = 'GET', body = null) => {
-            const API_BASE_URL = 'http://localhost:3000/api';
+            const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
             const url = `${API_BASE_URL}${endpoint}`;
             const headers = { 'Content-Type': 'application/json' };
             if (token) headers['Authorization'] = `Bearer ${token}`;

@@ -3,7 +3,7 @@ import * as THREE from 'three';
 
 // Impor komponen yang telah dipisahkan
 import DashboardPage from './components/DashboardPage';
-import ProjectsPage from './components/ProjectsPage';
+import ProjectsPage from './components/ProjectPage';
 import UsersPage from './components/UsersPage';
 import AdminSubmissionsPage from './components/AdminSubmissionsPage';
 import AdminWithdrawalsPage from './components/AdminWithdrawalsPage';
@@ -25,7 +25,7 @@ function App() {
     // Helper hook untuk API call
     const useApi = (token) => {
         return useCallback(async (endpoint, method = 'GET', body = null) => {
-            const API_BASE_URL = 'http://localhost:3000/api';
+            const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
             const url = `${API_BASE_URL}${endpoint}`;
             const headers = { 'Content-Type': 'application/json' };
             if (token) {

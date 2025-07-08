@@ -14,10 +14,12 @@ const LoginPage = ({ setToken, setUser }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
 
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
     // Hook kustom untuk melakukan panggilan API
     const useApi = () => {
         return useCallback(async (endpoint, method = 'GET', body = null) => {
-            const API_BASE_URL = 'http://localhost:3000/api';
+            
             const url = `${API_BASE_URL}${endpoint}`;
             const headers = { 'Content-Type': 'application/json' };
             const options = { method, headers, ...(body && { body: JSON.stringify(body) }) };
@@ -39,7 +41,7 @@ const LoginPage = ({ setToken, setUser }) => {
             
             if (loginData.accessToken) {
                 // Step 2: Gunakan token baru untuk mengambil profil pengguna
-                const profileResponse = await fetch(`${'http://localhost:3000/api'}/users/me`, {
+                const profileResponse = await fetch(`${API_BASE_URL}/users/me`, {
                     headers: { 'Authorization': `Bearer ${loginData.accessToken}` }
                 });
                 const profileData = await profileResponse.json();

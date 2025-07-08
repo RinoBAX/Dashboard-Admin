@@ -14,10 +14,10 @@ const AddProjectModal = ({ isOpen, onClose, onProjectAdded, token }) => {
     const [projectUrl, setProjectUrl] = useState('');
     const [fields, setFields] = useState([{ label: '', fieldType: 'TEXT' }]);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    
+
     const useApi = (token) => {
         return useCallback(async (endpoint, method = 'GET', body = null) => {
-            const API_BASE_URL = 'http://localhost:3000/api';
+            const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
             const url = `${API_BASE_URL}${endpoint}`;
             const headers = { 'Content-Type': 'application/json' };
             if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -84,7 +84,7 @@ const AddProjectModal = ({ isOpen, onClose, onProjectAdded, token }) => {
                         <label htmlFor="projectUrl">Project URL (Optional)</label>
                         <input id="projectUrl" type="text" value={projectUrl} onChange={e => setProjectUrl(e.target.value)} className="form-input" />
                     </div>
-                    
+
                     <h3 className="text-lg font-semibold mt-6 mb-2">Required Fields</h3>
                     {fields.map((field, index) => (
                         <div key={index} className="dynamic-field">
@@ -120,10 +120,10 @@ const ProjectsPage = ({ token }) => {
     const [projects, setProjects] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
     const useApi = (token) => {
         return useCallback(async (endpoint, method = 'GET', body = null) => {
-            const API_BASE_URL = 'http://localhost:3000/api';
             const url = `${API_BASE_URL}${endpoint}`;
             const headers = { 'Content-Type': 'application/json' };
             if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -171,7 +171,7 @@ const ProjectsPage = ({ token }) => {
         if (window.confirm(`Apakah Anda yakin ingin menghapus proyek dengan ID: ${projectId}?`)) {
             try {
                 await request(`/admin/projects/${projectId}`, 'DELETE');
-                fetchProjects(); 
+                fetchProjects();
             } catch (error) {
                 alert(`Gagal menghapus proyek: ${error.message}`);
             }
@@ -182,9 +182,9 @@ const ProjectsPage = ({ token }) => {
 
     return (
         <div>
-            <AddProjectModal 
-                isOpen={isModalOpen} 
-                onClose={() => setIsModalOpen(false)} 
+            <AddProjectModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
                 onProjectAdded={handleProjectAdded}
                 token={token}
             />

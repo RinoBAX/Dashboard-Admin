@@ -1,20 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
 
-// Komponen Tambahan (bisa dipisah ke file sendiri)
+
 const LoadingComponent = () => (
     <div className="loading-overlay">
         <div className="loader"></div>
         <p>Loading Users...</p>
     </div>
 );
-
-// Komponen Utama Halaman Manajemen Pengguna
 const UsersPage = ({ token }) => {
     const [users, setUsers] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [filter, setFilter] = useState('ALL'); // Pilihan filter: ALL, PENDING, APPROVED
-
-    // Hook kustom untuk melakukan panggilan API. Idealnya, ini berada di file terpisah.
+    const [filter, setFilter] = useState('ALL'); 
     const useApi = (token) => {
         return useCallback(async (endpoint, method = 'GET', body = null) => {
             const API_BASE_URL = 'http://localhost:3000/api';
@@ -29,12 +25,9 @@ const UsersPage = ({ token }) => {
         }, [token]);
     };
     const request = useApi(token);
-
-    // Fungsi untuk mengambil data semua pengguna dari backend
     const fetchUsers = useCallback(async () => {
         setIsLoading(true);
         try {
-            // CATATAN: Pastikan Anda sudah membuat endpoint GET /api/admin/users di backend Anda
             const data = await request('/admin/users');
             setUsers(data || []);
         } catch (error) {
@@ -44,38 +37,29 @@ const UsersPage = ({ token }) => {
             setIsLoading(false);
         }
     }, [request]);
-
-    // Ambil data saat komponen pertama kali dimuat
     useEffect(() => {
         fetchUsers();
     }, [fetchUsers]);
-
-    // Fungsi untuk menyetujui registrasi pengguna
     const handleApprove = async (userId) => {
         if (window.confirm(`Are you sure you want to approve user ID: ${userId}?`)) {
             try {
                 await request(`/admin/users/${userId}/approve`, 'PUT');
-                fetchUsers(); // Muat ulang daftar pengguna setelah berhasil
+                fetchUsers(); 
             } catch (error) {
                 alert(`Failed to approve user: ${error.message}`);
             }
         }
     };
-    
-    // Fungsi untuk menolak registrasi pengguna
     const handleReject = async (userId) => {
          if (window.confirm(`Are you sure you want to reject user ID: ${userId}? This action might be irreversible.`)) {
             try {
-                // CATATAN: Pastikan Anda sudah membuat endpoint PUT /api/admin/users/{id}/reject di backend Anda
                 await request(`/admin/users/${userId}/reject`, 'PUT');
-                fetchUsers(); // Muat ulang daftar pengguna setelah berhasil
+                fetchUsers(); 
             } catch (error) {
                 alert(`Failed to reject user: ${error.message}`);
             }
         }
     };
-
-    // Logika untuk memfilter pengguna berdasarkan status registrasi
     const filteredUsers = users.filter(user => {
         if (filter === 'ALL') return true;
         return user.statusRegistrasi === filter;
@@ -85,7 +69,6 @@ const UsersPage = ({ token }) => {
 
     return (
         <div>
-            {/* Gaya CSS khusus untuk halaman ini. Idealnya, ini berada di file CSS global. */}
             <style>{`
                 .filter-buttons { display: flex; gap: 0.5rem; }
                 .status-badge { padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.8rem; font-weight: 500; text-transform: uppercase; }
@@ -103,6 +86,7 @@ const UsersPage = ({ token }) => {
                     <button onClick={() => setFilter('ALL')} className={`button ${filter === 'ALL' ? 'button-primary' : 'button-secondary'}`}>All</button>
                     <button onClick={() => setFilter('PENDING')} className={`button ${filter === 'PENDING' ? 'button-primary' : 'button-secondary'}`}>Pending</button>
                     <button onClick={() => setFilter('APPROVED')} className={`button ${filter === 'APPROVED' ? 'button-primary' : 'button-secondary'}`}>Approved</button>
+                    <button onClick={() => setFilter('REJECTED')} className={`button ${filter === 'REJECTED' ? 'button-primary' : 'button-secondary'}`}>Rejected</button>
                 </div>
             </div>
             <div className="table-container glass-panel">
@@ -112,6 +96,7 @@ const UsersPage = ({ token }) => {
                             <th>User</th>
                             <th>Role</th>
                             <th>Balance</th>
+                            <th className="text-center">Total Submissions</th>
                             <th>Registration Status</th>
                             <th>Registered At</th>
                             <th>Actions</th>
@@ -131,6 +116,9 @@ const UsersPage = ({ token }) => {
                                 </td>
                                 <td>{user.role}</td>
                                 <td>Rp {Number(user.balance).toLocaleString('id-ID')}</td>
+                                <td className="text-center font-bold text-lg">
+                                    {user.submissions?.length || 0}
+                                </td>
                                 <td>
                                     <span className={`status-badge status-${user.statusRegistrasi?.toLowerCase()}`}>
                                         {user.statusRegistrasi}
@@ -148,7 +136,7 @@ const UsersPage = ({ token }) => {
                             </tr>
                         )) : (
                             <tr>
-                                <td colSpan="6" style={{textAlign: 'center', padding: '1.5rem'}}>No users found for this filter.</td>
+                                <td colSpan="7" style={{textAlign: 'center', padding: '1.5rem'}}>No users found for this filter.</td>
                             </tr>
                         )}
                     </tbody>
