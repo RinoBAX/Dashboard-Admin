@@ -1,34 +1,60 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 
-// Impor ICONS dan komponen lain jika diperlukan
-// Untuk saat ini, kita akan definisikan ikon yang dibutuhkan di sini
+// Ikon yang dibutuhkan untuk halaman ini
 const ICONS = {
     plus: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>,
     trash: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>,
 };
 
+// Hook kustom untuk melakukan panggilan API
+const useApi = (token) => {
+    return useCallback(async (endpoint, method = 'GET', body = null) => {
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+        const url = `${API_BASE_URL}${endpoint}`;
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+        
+        const options = { method, headers };
+        if (body) {
+            options.body = JSON.stringify(body);
+        }
+
+        const response = await fetch(url, options);
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || 'An error occurred');
+        return data;
+    }, [token]);
+};
+
+
 // Komponen Modal untuk Tambah/Edit Proyek
-const AddProjectModal = ({ isOpen, onClose, onProjectAdded, token }) => {
+const ProjectModal = ({ isOpen, onClose, onSuccess, request, existingProject }) => {
     const [namaProyek, setNamaProyek] = useState('');
     const [nilaiProyek, setNilaiProyek] = useState('');
     const [projectUrl, setProjectUrl] = useState('');
+    const [iconUrl, setIconUrl] = useState(''); // State untuk URL ikon
     const [fields, setFields] = useState([{ label: '', fieldType: 'TEXT' }]);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    
+    const isEditMode = Boolean(existingProject);
 
-    const useApi = (token) => {
-        return useCallback(async (endpoint, method = 'GET', body = null) => {
-            const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-            const url = `${API_BASE_URL}${endpoint}`;
-            const headers = { 'Content-Type': 'application/json' };
-            if (token) headers['Authorization'] = `Bearer ${token}`;
-            const options = { method, headers, ...(body && { body: JSON.stringify(body) }) };
-            const response = await fetch(url, options);
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.message || 'An error occurred');
-            return data;
-        }, [token]);
-    };
-    const request = useApi(token);
+    useEffect(() => {
+        if (isEditMode && existingProject) {
+            setNamaProyek(existingProject.namaProyek || '');
+            setNilaiProyek(existingProject.nilaiProyek?.toString() || '');
+            setProjectUrl(existingProject.projectUrl || '');
+            setIconUrl(existingProject.iconUrl || ''); // Mengisi URL ikon yang ada
+            setFields(existingProject.fields?.length > 0 ? existingProject.fields.map(f => ({label: f.label, fieldType: f.fieldType})) : [{ label: '', fieldType: 'TEXT' }]);
+        } else {
+            // Reset form untuk mode "Add"
+            setNamaProyek('');
+            setNilaiProyek('');
+            setProjectUrl('');
+            setIconUrl('');
+            setFields([{ label: '', fieldType: 'TEXT' }]);
+        }
+    }, [isOpen, existingProject, isEditMode]);
+
 
     const handleFieldChange = (index, event) => {
         const newFields = [...fields];
@@ -42,19 +68,24 @@ const AddProjectModal = ({ isOpen, onClose, onProjectAdded, token }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
+
         const payload = {
             namaProyek,
             nilaiProyek: parseFloat(nilaiProyek),
             projectUrl,
+            iconUrl, // Mengirim URL ikon sebagai string
             fields: fields.filter(f => f.label.trim() !== ''),
         };
 
+        const endpoint = isEditMode ? `/admin/projects/${existingProject.id}` : '/admin/projects';
+        const method = isEditMode ? 'PUT' : 'POST';
+
         try {
-            await request('/admin/projects', 'POST', payload);
-            alert('Proyek berhasil ditambahkan!');
-            onProjectAdded();
+            await request(endpoint, method, payload);
+            alert(`Proyek berhasil ${isEditMode ? 'diperbarui' : 'ditambahkan'}!`);
+            onSuccess();
         } catch (error) {
-            alert(`Gagal menambahkan proyek: ${error.message}`);
+            alert(`Gagal: ${error.message}`);
         } finally {
             setIsSubmitting(false);
         }
@@ -66,11 +97,15 @@ const AddProjectModal = ({ isOpen, onClose, onProjectAdded, token }) => {
         <div className="modal-overlay">
             <div className="modal-content glass-panel">
                 <div className="modal-header">
-                    <h2>Add New Project</h2>
+                    <h2>{isEditMode ? 'Edit Project' : 'Add New Project'}</h2>
                     <button onClick={onClose}>&times;</button>
                 </div>
                 <form onSubmit={handleSubmit}>
-                    <div className="form-grid">
+                    <div className="form-group">
+                        <label htmlFor="iconUrl">Project Icon URL (Opsional)</label>
+                        <input id="iconUrl" type="text" value={iconUrl} onChange={e => setIconUrl(e.target.value)} placeholder="https://example.com/icon.png" className="form-input" />
+                    </div>
+                    <div className="form-grid mt-4">
                         <div className="form-group">
                             <label htmlFor="namaProyek">Project Name</label>
                             <input id="namaProyek" type="text" value={namaProyek} onChange={e => setNamaProyek(e.target.value)} required className="form-input" />
@@ -81,10 +116,10 @@ const AddProjectModal = ({ isOpen, onClose, onProjectAdded, token }) => {
                         </div>
                     </div>
                     <div className="form-group mt-4">
-                        <label htmlFor="projectUrl">Project URL (Optional)</label>
+                        <label htmlFor="projectUrl">Project URL (Opsional)</label>
                         <input id="projectUrl" type="text" value={projectUrl} onChange={e => setProjectUrl(e.target.value)} className="form-input" />
                     </div>
-
+                    
                     <h3 className="text-lg font-semibold mt-6 mb-2">Required Fields</h3>
                     {fields.map((field, index) => (
                         <div key={index} className="dynamic-field">
@@ -105,7 +140,7 @@ const AddProjectModal = ({ isOpen, onClose, onProjectAdded, token }) => {
                     <div className="modal-actions">
                         <button type="button" onClick={onClose} className="button button-secondary">Cancel</button>
                         <button type="submit" disabled={isSubmitting} className="button button-primary">
-                            {isSubmitting ? 'Submitting...' : 'Create Project'}
+                            {isSubmitting ? 'Submitting...' : (isEditMode ? 'Update Project' : 'Create Project')}
                         </button>
                     </div>
                 </form>
@@ -120,20 +155,7 @@ const ProjectsPage = ({ token }) => {
     const [projects, setProjects] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-
-    const useApi = (token) => {
-        return useCallback(async (endpoint, method = 'GET', body = null) => {
-            const url = `${API_BASE_URL}${endpoint}`;
-            const headers = { 'Content-Type': 'application/json' };
-            if (token) headers['Authorization'] = `Bearer ${token}`;
-            const options = { method, headers, ...(body && { body: JSON.stringify(body) }) };
-            const response = await fetch(url, options);
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.message || 'An error occurred');
-            return data;
-        }, [token]);
-    };
+    const [editingProject, setEditingProject] = useState(null);
     const request = useApi(token);
 
     const processedProjects = useMemo(() => {
@@ -158,42 +180,54 @@ const ProjectsPage = ({ token }) => {
         fetchProjects();
     }, [fetchProjects]);
 
-    const handleProjectAdded = () => {
-        setIsModalOpen(false);
-        fetchProjects();
+    const handleAddClick = () => {
+        setEditingProject(null);
+        setIsModalOpen(true);
     };
 
-    const handleEditProject = (projectId) => {
-        alert(`Mengedit proyek dengan ID: ${projectId}`);
+    const handleEditClick = (project) => {
+        setEditingProject(project);
+        setIsModalOpen(true);
+    };
+
+    const handleModalClose = () => {
+        setIsModalOpen(false);
+        setEditingProject(null);
+    };
+
+    const handleModalSuccess = () => {
+        handleModalClose();
+        fetchProjects();
     };
 
     const handleRemoveProject = async (projectId) => {
         if (window.confirm(`Apakah Anda yakin ingin menghapus proyek dengan ID: ${projectId}?`)) {
             try {
                 await request(`/admin/projects/${projectId}`, 'DELETE');
-                fetchProjects();
+                fetchProjects(); 
             } catch (error) {
                 alert(`Gagal menghapus proyek: ${error.message}`);
             }
         }
     };
 
-    if (isLoading) return <div>Loading...</div>; // Ganti dengan LoadingComponent jika ada
+    if (isLoading) return <div>Loading...</div>;
 
     return (
         <div>
-            <AddProjectModal
-                isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
-                onProjectAdded={handleProjectAdded}
-                token={token}
+            <ProjectModal 
+                isOpen={isModalOpen} 
+                onClose={handleModalClose} 
+                onSuccess={handleModalSuccess}
+                request={request} // Mengirim fungsi request ke modal
+                existingProject={editingProject}
             />
             <div className="page-header">
                 <div>
                     <h1>Projects</h1>
                     <p>Manage all projects and view their submission statistics.</p>
                 </div>
-                <button onClick={() => setIsModalOpen(true)} className="button button-primary">
+                <button onClick={handleAddClick} className="button button-primary">
                     Add Project
                 </button>
             </div>
@@ -201,6 +235,7 @@ const ProjectsPage = ({ token }) => {
                 <table className="data-table">
                     <thead>
                         <tr>
+                            <th>Icon</th>
                             <th>Project Name</th>
                             <th>Value</th>
                             <th>Project Link</th>
@@ -214,6 +249,9 @@ const ProjectsPage = ({ token }) => {
                     <tbody>
                         {processedProjects.map(project => (
                             <tr key={project.id}>
+                                <td>
+                                    <img src={project.iconUrl || `https://placehold.co/40x40/1f2937/a0aec0?text=ICON`} alt={project.namaProyek} className="w-10 h-10 rounded-md object-cover"/>
+                                </td>
                                 <td className="font-semibold text-white">{project.namaProyek}</td>
                                 <td>Rp {Number(project.nilaiProyek).toLocaleString('id-ID')}</td>
                                 <td>
@@ -239,7 +277,7 @@ const ProjectsPage = ({ token }) => {
                                 <td className="text-red-400 font-bold text-center text-lg">{project.rejectedCount}</td>
                                 <td className="text-yellow-400 font-bold text-center text-lg">{project.pendingCount}</td>
                                 <td className="table-actions">
-                                    <button onClick={() => handleEditProject(project.id)} className="button button-sm button-secondary">Edit</button>
+                                    <button onClick={() => handleEditClick(project)} className="button button-sm button-secondary">Edit</button>
                                     <button onClick={() => handleRemoveProject(project.id)} className="button button-sm button-reject">Remove</button>
                                 </td>
                             </tr>
