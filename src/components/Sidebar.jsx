@@ -19,7 +19,7 @@ const Sidebar = ({ user, setPage, currentPage, handleLogout }) => {
 
     return (
         <aside className="sidebar glass-panel">
-            <h2 className="sidebar-header">TheBaxLancer</h2>
+            <h2 className="sidebar-header">BaxLancer</h2>
             <div className="sidebar-profile">
                 <img 
                     src={user.picture || `https://ui-avatars.com/api/?name=${user.nama}&background=0d0c38&color=00f6ff`} 
