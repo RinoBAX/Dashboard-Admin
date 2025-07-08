@@ -246,16 +246,43 @@ const GlobalStyles = () => (
         }
         .table-container { 
             padding: 1.5rem; 
+            overflow-x: auto;
+        }
+        /* STYLING SCROLLBAR BARU */
+        .table-container::-webkit-scrollbar {
+            height: 8px; /* Tinggi scrollbar horizontal */
+        }
+        .table-container::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2); /* Warna track yang lebih gelap */
+            border-radius: 10px;
+        }
+        .table-container::-webkit-scrollbar-thumb {
+            background-color: var(--primary-color); /* Menggunakan warna aksen utama */
+            border-radius: 10px;
+            border: 2px solid transparent;
+            background-clip: content-box;
+        }
+        .table-container::-webkit-scrollbar-thumb:hover {
+            background-color: var(--secondary-color); /* Warna berbeda saat di-hover */
         }
         .data-table { 
             width: 100%; 
             border-collapse: collapse; 
+            min-width: 900px;
         }
         .data-table th, .data-table td { 
             padding: 0.75rem 1rem; 
             text-align: left; 
             border-bottom: 1px solid rgba(255,255,255,0.1); 
             vertical-align: middle; 
+        }
+        /* PERBAIKAN: Menargetkan gambar ikon di dalam tabel */
+        .data-table td img.project-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 0.375rem; /* 6px */
+            object-fit: cover;
+            display: block;
         }
         .data-table th { 
             font-weight: bold; 
@@ -266,7 +293,8 @@ const GlobalStyles = () => (
         }
         .table-actions { 
             display: flex; 
-            gap: 0.5rem; 
+            gap: 0.5rem;
+            align-items: center; /* PERBAIKAN: Menengahkan tombol secara vertikal */
         }
         .button-approve { 
             background-color: #22c55e; 
