@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import * as THREE from 'three';
+import { useApi } from './hooks/useApi'; // Impor hook baru
 
 // Impor komponen yang telah dipisahkan
 import DashboardPage from './components/DashboardPage';
@@ -22,32 +23,7 @@ function App() {
     const [page, setPage] = useState('dashboard');
     const [isLoading, setIsLoading] = useState(true);
     
-    // Helper hook untuk API call
-    const useApi = (token) => {
-        return useCallback(async (endpoint, method = 'GET', body = null) => {
-            const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-            const url = `${API_BASE_URL}${endpoint}`;
-            const headers = { 'Content-Type': 'application/json' };
-            if (token) {
-                headers['Authorization'] = `Bearer ${token}`;
-            }
-            const options = { method, headers };
-            if (body) { options.body = JSON.stringify(body); }
-
-            try {
-                const response = await fetch(url, options);
-                const data = await response.json();
-                if (!response.ok) {
-                    throw new Error(data.message || 'An error occurred');
-                }
-                return data;
-            } catch (error) {
-                console.error(`API Error on ${method} ${endpoint}:`, error);
-                throw error;
-            }
-        }, [token]);
-    };
-
+    // Gunakan hook useApi sekali di level tertinggi
     const request = useApi(token);
 
     const setToken = (newToken) => {
@@ -148,10 +124,11 @@ function App() {
     const renderPage = () => {
         switch (page) {
             case 'dashboard': return <DashboardPage />;
-            case 'projects': return <ProjectsPage token={token} />;
-            case 'users': return <UsersPage />;
-            case 'submissions': return <AdminSubmissionsPage token={token} />;
-            case 'withdrawals': return <AdminWithdrawalsPage token={token} />;
+            // DIUBAH: Meneruskan fungsi `request` sebagai prop, bukan token
+            case 'projects': return <ProjectsPage request={request} />;
+            case 'users': return <UsersPage request={request} />;
+            case 'submissions': return <AdminSubmissionsPage request={request} />;
+            case 'withdrawals': return <AdminWithdrawalsPage request={request} />;
             default: return <DashboardPage />;
         }
     };
