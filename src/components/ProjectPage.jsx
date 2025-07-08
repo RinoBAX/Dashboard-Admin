@@ -1,38 +1,15 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 
-// Ikon yang dibutuhkan untuk halaman ini
 const ICONS = {
     plus: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>,
     trash: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>,
 };
 
-// Hook kustom untuk melakukan panggilan API
-const useApi = (token) => {
-    return useCallback(async (endpoint, method = 'GET', body = null) => {
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-        const url = `${API_BASE_URL}${endpoint}`;
-        const headers = { 'Content-Type': 'application/json' };
-        if (token) headers['Authorization'] = `Bearer ${token}`;
-        
-        const options = { method, headers };
-        if (body) {
-            options.body = JSON.stringify(body);
-        }
-
-        const response = await fetch(url, options);
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.message || 'An error occurred');
-        return data;
-    }, [token]);
-};
-
-
-// Komponen Modal untuk Tambah/Edit Proyek
 const ProjectModal = ({ isOpen, onClose, onSuccess, request, existingProject }) => {
     const [namaProyek, setNamaProyek] = useState('');
     const [nilaiProyek, setNilaiProyek] = useState('');
     const [projectUrl, setProjectUrl] = useState('');
-    const [iconUrl, setIconUrl] = useState(''); // State untuk URL ikon
+    const [iconUrl, setIconUrl] = useState('');
     const [fields, setFields] = useState([{ label: '', fieldType: 'TEXT' }]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     
@@ -43,10 +20,9 @@ const ProjectModal = ({ isOpen, onClose, onSuccess, request, existingProject }) 
             setNamaProyek(existingProject.namaProyek || '');
             setNilaiProyek(existingProject.nilaiProyek?.toString() || '');
             setProjectUrl(existingProject.projectUrl || '');
-            setIconUrl(existingProject.iconUrl || ''); // Mengisi URL ikon yang ada
+            setIconUrl(existingProject.iconUrl || '');
             setFields(existingProject.fields?.length > 0 ? existingProject.fields.map(f => ({label: f.label, fieldType: f.fieldType})) : [{ label: '', fieldType: 'TEXT' }]);
         } else {
-            // Reset form untuk mode "Add"
             setNamaProyek('');
             setNilaiProyek('');
             setProjectUrl('');
@@ -73,7 +49,7 @@ const ProjectModal = ({ isOpen, onClose, onSuccess, request, existingProject }) 
             namaProyek,
             nilaiProyek: parseFloat(nilaiProyek),
             projectUrl,
-            iconUrl, // Mengirim URL ikon sebagai string
+            iconUrl,
             fields: fields.filter(f => f.label.trim() !== ''),
         };
 
@@ -149,15 +125,12 @@ const ProjectModal = ({ isOpen, onClose, onSuccess, request, existingProject }) 
     );
 };
 
-
-// Komponen Utama Halaman Proyek
-const ProjectsPage = ({ token }) => {
+const ProjectsPage = ({ request }) => { 
     const [projects, setProjects] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingProject, setEditingProject] = useState(null);
-    const request = useApi(token);
-
+    
     const processedProjects = useMemo(() => {
         return projects.map(project => ({
             ...project,
@@ -219,7 +192,7 @@ const ProjectsPage = ({ token }) => {
                 isOpen={isModalOpen} 
                 onClose={handleModalClose} 
                 onSuccess={handleModalSuccess}
-                request={request} // Mengirim fungsi request ke modal
+                request={request}
                 existingProject={editingProject}
             />
             <div className="page-header">
@@ -250,7 +223,7 @@ const ProjectsPage = ({ token }) => {
                         {processedProjects.map(project => (
                             <tr key={project.id}>
                                 <td>
-                                    <img src={project.iconUrl || `https://placehold.co/40x40/1f2937/a0aec0?text=ICON`} alt={project.namaProyek} className="w-10 h-10 rounded-md object-cover"/>
+                                    <img src={project.iconUrl || `https://placehold.co/40x40/1f2937/a0aec0?text=ICON`} alt={project.namaProyek} className="project-icon"/>
                                 </td>
                                 <td className="font-semibold text-white">{project.namaProyek}</td>
                                 <td>Rp {Number(project.nilaiProyek).toLocaleString('id-ID')}</td>

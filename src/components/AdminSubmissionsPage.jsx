@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 
-// Komponen Tambahan
 const LoadingComponent = () => (
     <div className="loading-overlay">
         <div className="loader"></div>
@@ -59,28 +58,11 @@ const SubmissionDetailModal = ({ submission, onClose, onApprove, onReject }) => 
     );
 };
 
-
-// Komponen Utama Halaman Review Submission
-const AdminSubmissionsPage = ({ token }) => {
+const AdminSubmissionsPage = ({ request }) => { 
     const [submissions, setSubmissions] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [filter, setFilter] = useState('PENDING'); // Default filter
     const [selectedSubmission, setSelectedSubmission] = useState(null);
-
-    const useApi = (token) => {
-        return useCallback(async (endpoint, method = 'GET', body = null) => {
-            const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-            const url = `${API_BASE_URL}${endpoint}`;
-            const headers = { 'Content-Type': 'application/json' };
-            if (token) headers['Authorization'] = `Bearer ${token}`;
-            const options = { method, headers, ...(body && { body: JSON.stringify(body) }) };
-            const response = await fetch(url, options);
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.message || 'An error occurred');
-            return data;
-        }, [token]);
-    };
-    const request = useApi(token);
 
     const fetchSubmissions = useCallback(async () => {
         setIsLoading(true);
@@ -94,7 +76,7 @@ const AdminSubmissionsPage = ({ token }) => {
         } finally {
             setIsLoading(false);
         }
-    }, [request, filter]);
+    }, [request, filter]); 
 
     useEffect(() => {
         fetchSubmissions();
@@ -105,7 +87,7 @@ const AdminSubmissionsPage = ({ token }) => {
             try {
                 await request(`/admin/submissions/${submissionId}/approve`, 'PUT');
                 fetchSubmissions();
-                setSelectedSubmission(null); // Tutup modal setelah aksi
+                setSelectedSubmission(null);
             } catch (error) {
                 alert(`Failed to approve submission: ${error.message}`);
             }
@@ -118,7 +100,7 @@ const AdminSubmissionsPage = ({ token }) => {
             try {
                 await request(`/admin/submissions/${submissionId}/reject`, 'PUT', { catatanAdmin: reason });
                 fetchSubmissions();
-                setSelectedSubmission(null); // Tutup modal setelah aksi
+                setSelectedSubmission(null);
             } catch (error) {
                 alert(`Failed to reject submission: ${error.message}`);
             }
@@ -127,8 +109,6 @@ const AdminSubmissionsPage = ({ token }) => {
     
     const handleReviewClick = async (submission) => {
         try {
-            // Panggil API untuk mendapatkan detail lengkap submission
-            // CATATAN: Pastikan endpoint GET /api/admin/submissions/:id ada di backend
             const detailedSubmission = await request(`/admin/submissions/${submission.id}`);
             setSelectedSubmission(detailedSubmission);
         } catch (error) {

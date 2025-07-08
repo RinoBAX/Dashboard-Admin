@@ -1,6 +1,4 @@
 import React, { useMemo } from 'react';
-
-// Ikon yang dibutuhkan untuk navigasi
 const ICONS = {
     dashboard: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>,
     projects: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>,
@@ -11,7 +9,6 @@ const ICONS = {
 };
 
 const Sidebar = ({ user, setPage, currentPage, handleLogout }) => {
-    // Daftar item navigasi beserta peran yang diizinkan
     const navItems = useMemo(() => [
         { name: 'Dashboard', icon: ICONS.dashboard, page: 'dashboard', roles: ['ADMIN', 'SUPER_ADMIN'] },
         { name: 'Projects', icon: ICONS.projects, page: 'projects', roles: ['ADMIN', 'SUPER_ADMIN'] },
@@ -34,9 +31,7 @@ const Sidebar = ({ user, setPage, currentPage, handleLogout }) => {
             <div className="sidebar-nav">
                 <nav>
                     {navItems
-                        // Filter item navigasi berdasarkan peran pengguna
                         .filter(item => item.roles.includes(user.role))
-                        // Tampilkan item yang sudah difilter
                         .map(item => (
                             <button 
                                 key={item.name} 

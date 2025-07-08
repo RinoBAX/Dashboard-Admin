@@ -1,7 +1,4 @@
 import React from 'react';
-
-// Komponen ini berisi semua styling global untuk aplikasi.
-// Ini membantu menjaga file App.jsx tetap bersih dan fokus pada logika.
 const GlobalStyles = () => (
     <style>{`
         :root { 

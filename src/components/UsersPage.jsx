@@ -1,34 +1,109 @@
 import React, { useState, useEffect, useCallback } from 'react';
-
-
 const LoadingComponent = () => (
     <div className="loading-overlay">
         <div className="loader"></div>
         <p>Loading Users...</p>
     </div>
 );
-const UsersPage = ({ token }) => {
+
+const EditUserModal = ({ isOpen, onClose, onSuccess, request, user }) => {
+    const [formData, setFormData] = useState({
+        nama: '',
+        email: '',
+        role: 'USER',
+        balance: 0,
+    });
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    useEffect(() => {
+        if (user) {
+            setFormData({
+                nama: user.nama || '',
+                email: user.email || '',
+                role: user.role || 'USER',
+                balance: user.balance?.toString() || '0',
+            });
+        }
+    }, [user]);
+
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setIsSubmitting(true);
+        try {
+            await request(`/admin/users/${user.id}`, 'PUT', {
+                ...formData,
+                balance: parseFloat(formData.balance)
+            });
+            alert('User data updated successfully!');
+            onSuccess();
+        } catch (error) {
+            alert(`Failed to update user: ${error.message}`);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="modal-overlay">
+            <div className="modal-content glass-panel">
+                <div className="modal-header">
+                    <h2>Edit User: {user.nama}</h2>
+                    <button onClick={onClose}>&times;</button>
+                </div>
+                <form onSubmit={handleSubmit}>
+                    <div className="form-group">
+                        <label htmlFor="nama">Name</label>
+                        <input id="nama" name="nama" type="text" value={formData.nama} onChange={handleChange} required className="form-input" />
+                    </div>
+                    <div className="form-group mt-4">
+                        <label htmlFor="email">Email</label>
+                        <input id="email" name="email" type="email" value={formData.email} onChange={handleChange} required className="form-input" />
+                    </div>
+                    <div className="form-grid mt-4">
+                        <div className="form-group">
+                            <label htmlFor="role">Role</label>
+                            <select id="role" name="role" value={formData.role} onChange={handleChange} className="form-select">
+                                <option value="USER">USER</option>
+                                <option value="ADMIN">ADMIN</option>
+                                <option value="SUPER_ADMIN">SUPER_ADMIN</option>
+                            </select>
+                        </div>
+                        <div className="form-group">
+                            <label htmlFor="balance">Balance</label>
+                            <input id="balance" name="balance" type="number" value={formData.balance} onChange={handleChange} required className="form-input" />
+                        </div>
+                    </div>
+                    <div className="modal-actions">
+                        <button type="button" onClick={onClose} className="button button-secondary">Cancel</button>
+                        <button type="submit" disabled={isSubmitting} className="button button-primary">
+                            {isSubmitting ? 'Updating...' : 'Update User'}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+const UsersPage = ({ request }) => {
     const [users, setUsers] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [filter, setFilter] = useState('ALL');
-    const useApi = (token) => {
-        return useCallback(async (endpoint, method = 'GET', body = null) => {
-            const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-            const url = `${API_BASE_URL}${endpoint}`;
-            const headers = { 'Content-Type': 'application/json' };
-            if (token) headers['Authorization'] = `Bearer ${token}`;
-            const options = { method, headers, ...(body && { body: JSON.stringify(body) }) };
-            const response = await fetch(url, options);
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.message || 'An error occurred');
-            return data;
-        }, [token]);
-    };
-    const request = useApi(token);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [editingUser, setEditingUser] = useState(null);
+
     const fetchUsers = useCallback(async () => {
         setIsLoading(true);
         try {
-            const data = await request('/admin/users');
+            const endpoint = filter === 'ALL' ? '/admin/users' : `/admin/users?status=${filter}`;
+            const data = await request(endpoint);
             setUsers(data || []);
         } catch (error) {
             console.error("Failed to fetch users", error);
@@ -36,10 +111,12 @@ const UsersPage = ({ token }) => {
         } finally {
             setIsLoading(false);
         }
-    }, [request]);
+    }, [request, filter]);
+
     useEffect(() => {
         fetchUsers();
     }, [fetchUsers]);
+
     const handleApprove = async (userId) => {
         if (window.confirm(`Are you sure you want to approve user ID: ${userId}?`)) {
             try {
@@ -50,8 +127,9 @@ const UsersPage = ({ token }) => {
             }
         }
     };
+    
     const handleReject = async (userId) => {
-        if (window.confirm(`Are you sure you want to reject user ID: ${userId}? This action might be irreversible.`)) {
+         if (window.confirm(`Are you sure you want to reject user ID: ${userId}?`)) {
             try {
                 await request(`/admin/users/${userId}/reject`, 'PUT');
                 fetchUsers();
@@ -60,10 +138,35 @@ const UsersPage = ({ token }) => {
             }
         }
     };
-    const filteredUsers = users.filter(user => {
-        if (filter === 'ALL') return true;
-        return user.statusRegistrasi === filter;
-    });
+
+    const handleEditClick = (user) => {
+        setEditingUser(user);
+        setIsEditModalOpen(true);
+    };
+
+    const handleRemoveClick = async (userId) => {
+        if (window.confirm(`Are you sure you want to PERMANENTLY DELETE user ID: ${userId}? This action cannot be undone.`)) {
+            try {
+                await request(`/admin/users/${userId}`, 'DELETE');
+                alert('User deleted successfully.');
+                fetchUsers();
+            } catch (error) {
+                alert(`Failed to delete user: ${error.message}`);
+            }
+        }
+    };
+
+    const handleModalClose = () => {
+        setIsEditModalOpen(false);
+        setEditingUser(null);
+    };
+
+    const handleModalSuccess = () => {
+        handleModalClose();
+        fetchUsers();
+    };
+
+    const filteredUsers = users;
 
     if (isLoading) return <LoadingComponent />;
 
@@ -76,13 +179,21 @@ const UsersPage = ({ token }) => {
                 .status-approved { background-color: #22c55e; color: white; }
                 .status-rejected { background-color: #ef4444; color: white; }
             `}</style>
+            
+            <EditUserModal
+                isOpen={isEditModalOpen}
+                onClose={handleModalClose}
+                onSuccess={handleModalSuccess}
+                request={request}
+                user={editingUser}
+            />
 
             <div className="page-header">
                 <div>
                     <h1>User Management</h1>
                     <p>Approve, reject, and manage all registered users.</p>
                 </div>
-                <div className="filter-buttons">
+                 <div className="filter-buttons">
                     <button onClick={() => setFilter('ALL')} className={`button ${filter === 'ALL' ? 'button-primary' : 'button-secondary'}`}>All</button>
                     <button onClick={() => setFilter('PENDING')} className={`button ${filter === 'PENDING' ? 'button-primary' : 'button-secondary'}`}>Pending</button>
                     <button onClick={() => setFilter('APPROVED')} className={`button ${filter === 'APPROVED' ? 'button-primary' : 'button-secondary'}`}>Approved</button>
@@ -106,11 +217,11 @@ const UsersPage = ({ token }) => {
                         {filteredUsers.length > 0 ? filteredUsers.map(user => (
                             <tr key={user.id}>
                                 <td>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                        <img src={user.picture || `https://ui-avatars.com/api/?name=${user.nama}&background=1a1a2e&color=00f6ff`} alt={user.nama} style={{ width: '40px', height: '40px', borderRadius: '50%' }} />
+                                    <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem'}}>
+                                        <img src={user.picture || `https://ui-avatars.com/api/?name=${user.nama}&background=1a1a2e&color=00f6ff`} alt={user.nama} style={{width: '40px', height: '40px', borderRadius: '50%'}} />
                                         <div>
                                             <p className="font-semibold text-white">{user.nama}</p>
-                                            <p style={{ fontSize: '0.8rem', color: '#a0a0a0' }}>{user.email}</p>
+                                            <p style={{fontSize: '0.8rem', color: '#a0a0a0'}}>{user.email}</p>
                                         </div>
                                     </div>
                                 </td>
@@ -126,17 +237,22 @@ const UsersPage = ({ token }) => {
                                 </td>
                                 <td>{new Date(user.tglDibuat).toLocaleDateString()}</td>
                                 <td className="table-actions">
-                                    {user.statusRegistrasi === 'PENDING' && (
+                                    {user.statusRegistrasi === 'PENDING' ? (
                                         <>
                                             <button onClick={() => handleApprove(user.id)} className="button button-sm button-approve">Approve</button>
                                             <button onClick={() => handleReject(user.id)} className="button button-sm button-reject">Reject</button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <button onClick={() => handleEditClick(user)} className="button button-sm button-secondary">Edit</button>
+                                            <button onClick={() => handleRemoveClick(user.id)} className="button button-sm button-reject">Remove</button>
                                         </>
                                     )}
                                 </td>
                             </tr>
                         )) : (
                             <tr>
-                                <td colSpan="7" style={{ textAlign: 'center', padding: '1.5rem' }}>No users found for this filter.</td>
+                                <td colSpan="7" style={{textAlign: 'center', padding: '1.5rem'}}>No users found for this filter.</td>
                             </tr>
                         )}
                     </tbody>
