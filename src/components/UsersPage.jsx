@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+
 const LoadingComponent = () => (
     <div className="loading-overlay">
         <div className="loader"></div>
@@ -6,13 +7,14 @@ const LoadingComponent = () => (
     </div>
 );
 
-const EditUserModal = ({ isOpen, onClose, onSuccess, request, user }) => {
+const EditUserModal = ({ isOpen, onClose, onSuccess, token, user }) => {
     const [formData, setFormData] = useState({
         nama: '',
         email: '',
         role: 'USER',
         balance: 0,
     });
+    const [pictureFile, setPictureFile] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
@@ -23,22 +25,47 @@ const EditUserModal = ({ isOpen, onClose, onSuccess, request, user }) => {
                 role: user.role || 'USER',
                 balance: user.balance?.toString() || '0',
             });
+            setPictureFile(null);
         }
-    }, [user]);
+    }, [user, isOpen]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
+    const handleFileChange = (e) => {
+        setPictureFile(e.target.files[0]);
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
+
+        const payload = new FormData();
+        payload.append('nama', formData.nama);
+        payload.append('email', formData.email);
+        payload.append('role', formData.role);
+        payload.append('balance', formData.balance);
+        if (pictureFile) {
+            payload.append('picture', pictureFile);
+        }
+
         try {
-            await request(`/admin/users/${user.id}`, 'PUT', {
-                ...formData,
-                balance: parseFloat(formData.balance)
+            const API_BASE_URL = 'http://localhost:6969/api';
+            const response = await fetch(`${API_BASE_URL}/admin/users/${user.id}`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: payload,
             });
+
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to update user');
+            }
+            
             alert('User data updated successfully!');
             onSuccess();
         } catch (error) {
@@ -59,6 +86,12 @@ const EditUserModal = ({ isOpen, onClose, onSuccess, request, user }) => {
                 </div>
                 <form onSubmit={handleSubmit}>
                     <div className="form-group">
+                        <label htmlFor="picture">Profile Picture</label>
+                        {user.picture && !pictureFile && <img src={user.picture} alt="Current" className="w-20 h-20 rounded-full my-2 object-cover" />}
+                        {pictureFile && <img src={URL.createObjectURL(pictureFile)} alt="Preview" className="w-20 h-20 rounded-full my-2 object-cover" />}
+                        <input id="picture" name="picture" type="file" onChange={handleFileChange} accept="image/*" className="form-input" />
+                    </div>
+                    <div className="form-group mt-4">
                         <label htmlFor="nama">Name</label>
                         <input id="nama" name="nama" type="text" value={formData.nama} onChange={handleChange} required className="form-input" />
                     </div>
@@ -92,7 +125,7 @@ const EditUserModal = ({ isOpen, onClose, onSuccess, request, user }) => {
     );
 };
 
-const UsersPage = ({ request }) => {
+const UsersPage = ({ request, token }) => { 
     const [users, setUsers] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [filter, setFilter] = useState('ALL');
@@ -184,7 +217,7 @@ const UsersPage = ({ request }) => {
                 isOpen={isEditModalOpen}
                 onClose={handleModalClose}
                 onSuccess={handleModalSuccess}
-                request={request}
+                token={token}
                 user={editingUser}
             />
 
