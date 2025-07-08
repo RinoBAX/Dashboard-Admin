@@ -52,7 +52,7 @@ const EditUserModal = ({ isOpen, onClose, onSuccess, token, user }) => {
         }
 
         try {
-            const API_BASE_URL = 'http://localhost:6969/api';
+            const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
             const response = await fetch(`${API_BASE_URL}/admin/users/${user.id}`, {
                 method: 'PUT',
                 headers: {
