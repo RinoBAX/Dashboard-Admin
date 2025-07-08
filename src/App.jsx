@@ -4,7 +4,7 @@ import { useApi } from './hooks/useApi'; // Impor hook baru
 
 // Impor komponen yang telah dipisahkan
 import DashboardPage from './components/DashboardPage';
-import ProjectsPage from './components/ProjectPage';
+import ProjectsPage from './components/ProjectPage'; // PERBAIKAN: Nama file disesuaikan
 import UsersPage from './components/UsersPage';
 import AdminSubmissionsPage from './components/AdminSubmissionsPage';
 import AdminWithdrawalsPage from './components/AdminWithdrawalsPage';
@@ -22,8 +22,6 @@ function App() {
     });
     const [page, setPage] = useState('dashboard');
     const [isLoading, setIsLoading] = useState(true);
-    
-    // Gunakan hook useApi sekali di level tertinggi
     const request = useApi(token);
 
     const setToken = (newToken) => {
@@ -124,11 +122,11 @@ function App() {
     const renderPage = () => {
         switch (page) {
             case 'dashboard': return <DashboardPage />;
-            // DIUBAH: Meneruskan fungsi `request` sebagai prop, bukan token
-            case 'projects': return <ProjectsPage request={request} />;
-            case 'users': return <UsersPage request={request} />;
-            case 'submissions': return <AdminSubmissionsPage request={request} />;
-            case 'withdrawals': return <AdminWithdrawalsPage request={request} />;
+            case 'projects': return <ProjectsPage token={token} />;
+            // PERBAIKAN: Menambahkan prop `token` yang hilang
+            case 'users': return <UsersPage token={token} />;
+            case 'submissions': return <AdminSubmissionsPage token={token} />;
+            case 'withdrawals': return <AdminWithdrawalsPage token={token} />;
             default: return <DashboardPage />;
         }
     };
