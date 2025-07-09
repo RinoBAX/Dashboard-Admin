@@ -7,17 +7,50 @@ const LoadingComponent = () => (
     </div>
 );
 
-const AdminWithdrawalsPage = ({ request }) => { 
-    const [withdrawals, setWithdrawals] = useState([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [filter, setFilter] = useState('PENDING'); 
+const Pagination = ({ currentPage, totalPages, onPageChange }) => {
+    const handlePrev = () => {
+        if (currentPage > 1) {
+            onPageChange(currentPage - 1);
+        }
+    };
 
-    const fetchWithdrawals = useCallback(async () => {
+    const handleNext = () => {
+        if (currentPage < totalPages) {
+            onPageChange(currentPage + 1);
+        }
+    };
+
+    if (totalPages <= 1) return null;
+
+    return (
+        <div className="flex justify-center items-center gap-4 mt-6">
+            <button onClick={handlePrev} disabled={currentPage === 1} className="button button-secondary disabled:opacity-50">
+                Previous
+            </button>
+            <span className="text-gray-400">
+                Page {currentPage} of {totalPages}
+            </span>
+            <button onClick={handleNext} disabled={currentPage === totalPages} className="button button-secondary disabled:opacity-50">
+                Next
+            </button>
+        </div>
+    );
+};
+
+const AdminWithdrawalsPage = ({ request }) => {
+    const [withdrawals, setWithdrawals] = useState([]);
+    const [pagination, setPagination] = useState(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [filter, setFilter] = useState('PENDING');
+    const [currentPage, setCurrentPage] = useState(1);
+
+    const fetchWithdrawals = useCallback(async (pageToFetch) => {
         setIsLoading(true);
         try {
-            const endpoint = filter === 'ALL' ? '/superadmin/withdrawals' : `/superadmin/withdrawals?status=${filter}`;
-            const data = await request(endpoint);
-            setWithdrawals(data || []);
+            const endpoint = `/superadmin/withdrawals?status=${filter}&page=${pageToFetch}&pageSize=10`;
+            const response = await request(endpoint);
+            setWithdrawals(response.data || []);
+            setPagination(response.pagination || null);
         } catch (error) {
             console.error("Failed to fetch withdrawals", error);
             alert(`Failed to fetch withdrawals: ${error.message}`);
@@ -25,26 +58,34 @@ const AdminWithdrawalsPage = ({ request }) => {
             setIsLoading(false);
         }
     }, [request, filter]);
+
     useEffect(() => {
-        fetchWithdrawals();
-    }, [fetchWithdrawals]);
+        setCurrentPage(1);
+        fetchWithdrawals(1);
+    }, [filter]);
+
+    const handlePageChange = (newPage) => {
+        setCurrentPage(newPage);
+        fetchWithdrawals(newPage);
+    };
 
     const handleApprove = async (withdrawalId) => {
         if (window.confirm(`Are you sure you want to approve withdrawal ID: ${withdrawalId}?`)) {
             try {
                 await request(`/superadmin/withdrawals/${withdrawalId}/approve`, 'PUT');
-                fetchWithdrawals(); 
+                fetchWithdrawals(currentPage);
             } catch (error) {
                 alert(`Failed to approve withdrawal: ${error.message}`);
             }
         }
     };
+
     const handleReject = async (withdrawalId) => {
         const reason = prompt("Please provide a reason for rejection (optional):");
         if (reason !== null) {
             try {
                 await request(`/superadmin/withdrawals/${withdrawalId}/reject`, 'PUT', { reason });
-                fetchWithdrawals(); 
+                fetchWithdrawals(currentPage);
             } catch (error) {
                 alert(`Failed to reject withdrawal: ${error.message}`);
             }
@@ -59,8 +100,6 @@ const AdminWithdrawalsPage = ({ request }) => {
         };
         return <span className={`px-2 py-1 text-xs font-bold text-white rounded-full ${statusMap[status]}`}>{status}</span>;
     };
-
-    if (isLoading) return <LoadingComponent />;
 
     return (
         <div>
@@ -96,7 +135,9 @@ const AdminWithdrawalsPage = ({ request }) => {
                         </tr>
                     </thead>
                     <tbody>
-                        {withdrawals.length > 0 ? withdrawals.map(withdrawal => (
+                        {isLoading ? (
+                            <tr><td colSpan="5" className="text-center p-8"><div className="loader mx-auto"></div></td></tr>
+                        ) : withdrawals.length > 0 ? withdrawals.map(withdrawal => (
                             <tr key={withdrawal.id}>
                                 <td>{withdrawal.user?.nama || 'N/A'}</td>
                                 <td>Rp {Number(withdrawal.totalWithdrawal).toLocaleString('id-ID')}</td>
@@ -119,6 +160,7 @@ const AdminWithdrawalsPage = ({ request }) => {
                     </tbody>
                 </table>
             </div>
+            {pagination && <Pagination {...pagination} onPageChange={handlePageChange} />}
         </div>
     );
 };

@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 
+// --- Helper Components ---
+
 const LoadingComponent = () => (
     <div className="loading-overlay">
         <div className="loader"></div>
@@ -7,12 +9,33 @@ const LoadingComponent = () => (
     </div>
 );
 
-const EditUserModal = ({ isOpen, onClose, onSuccess, token, user }) => {
+const Pagination = ({ currentPage, totalPages, onPageChange }) => {
+    if (totalPages <= 1) return null;
+
+    return (
+        <div className="flex justify-center items-center gap-4 mt-6">
+            <button onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1} className="button button-secondary disabled:opacity-50">
+                Previous
+            </button>
+            <span className="text-gray-400">
+                Page {currentPage} of {totalPages}
+            </span>
+            <button onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages} className="button button-secondary disabled:opacity-50">
+                Next
+            </button>
+        </div>
+    );
+};
+
+const EditUserModal = ({ isOpen, onClose, onSuccess, token, user, currentUser }) => {
     const [formData, setFormData] = useState({
         nama: '',
         email: '',
         role: 'USER',
         balance: 0,
+        nomorTelepon: '',
+        bankName: 'EMPTY', // Tambahkan state untuk bank
+        noRekening: '',   // Tambahkan state untuk no rekening
     });
     const [pictureFile, setPictureFile] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -24,6 +47,9 @@ const EditUserModal = ({ isOpen, onClose, onSuccess, token, user }) => {
                 email: user.email || '',
                 role: user.role || 'USER',
                 balance: user.balance?.toString() || '0',
+                nomorTelepon: user.nomorTelepon || '',
+                bankName: user.bankName || 'EMPTY', // Isi state dengan data yang ada
+                noRekening: user.noRekening || '',   // Isi state dengan data yang ada
             });
             setPictureFile(null);
         }
@@ -46,7 +72,14 @@ const EditUserModal = ({ isOpen, onClose, onSuccess, token, user }) => {
         payload.append('nama', formData.nama);
         payload.append('email', formData.email);
         payload.append('role', formData.role);
-        payload.append('balance', formData.balance);
+        payload.append('nomorTelepon', formData.nomorTelepon);
+        payload.append('bankName', formData.bankName);     // Kirim data bank
+        payload.append('noRekening', formData.noRekening); // Kirim data no rekening
+
+        if (currentUser?.role === 'SUPER_ADMIN') {
+            payload.append('balance', formData.balance);
+        }
+
         if (pictureFile) {
             payload.append('picture', pictureFile);
         }
@@ -65,7 +98,7 @@ const EditUserModal = ({ isOpen, onClose, onSuccess, token, user }) => {
             if (!response.ok) {
                 throw new Error(data.message || 'Failed to update user');
             }
-            
+
             alert('User data updated successfully!');
             onSuccess();
         } catch (error) {
@@ -99,6 +132,28 @@ const EditUserModal = ({ isOpen, onClose, onSuccess, token, user }) => {
                         <label htmlFor="email">Email</label>
                         <input id="email" name="email" type="email" value={formData.email} onChange={handleChange} required className="form-input" />
                     </div>
+                    <div className="form-group mt-4">
+                        <label htmlFor="nomorTelepon">Nomor Telepon</label>
+                        <input id="nomorTelepon" name="nomorTelepon" type="text" value={formData.nomorTelepon} onChange={handleChange} className="form-input" />
+                    </div>
+                    <div className="form-grid mt-4">
+                        <div className="form-group">
+                            <label htmlFor="bankName">Bank Name</label>
+                            <select id="bankName" name="bankName" value={formData.bankName} onChange={handleChange} className="form-select">
+                                <option value="EMPTY">-- Pilih Bank --</option>
+                                <option value="BCA">BCA</option>
+                                <option value="MANDIRI">MANDIRI</option>
+                                <option value="UOB">UOB</option>
+                                <option value="CIMB">CIMB</option>
+                                <option value="BNI">BNI</option>
+                                <option value="BRI">BRI</option>
+                            </select>
+                        </div>
+                        <div className="form-group">
+                            <label htmlFor="noRekening">Nomor Rekening</label>
+                            <input id="noRekening" name="noRekening" type="text" value={formData.noRekening} onChange={handleChange} className="form-input" />
+                        </div>
+                    </div>
                     <div className="form-grid mt-4">
                         <div className="form-group">
                             <label htmlFor="role">Role</label>
@@ -108,10 +163,12 @@ const EditUserModal = ({ isOpen, onClose, onSuccess, token, user }) => {
                                 <option value="SUPER_ADMIN">SUPER_ADMIN</option>
                             </select>
                         </div>
-                        <div className="form-group">
-                            <label htmlFor="balance">Balance</label>
-                            <input id="balance" name="balance" type="number" value={formData.balance} onChange={handleChange} required className="form-input" />
-                        </div>
+                        {currentUser?.role === 'SUPER_ADMIN' && (
+                            <div className="form-group">
+                                <label htmlFor="balance">Balance</label>
+                                <input id="balance" name="balance" type="number" value={formData.balance} onChange={handleChange} required className="form-input" />
+                            </div>
+                        )}
                     </div>
                     <div className="modal-actions">
                         <button type="button" onClick={onClose} className="button button-secondary">Cancel</button>
@@ -125,19 +182,25 @@ const EditUserModal = ({ isOpen, onClose, onSuccess, token, user }) => {
     );
 };
 
-const UsersPage = ({ request, token }) => { 
+
+// --- Main Component ---
+
+const UsersPage = ({ request, token, currentUser }) => {
     const [users, setUsers] = useState([]);
+    const [pagination, setPagination] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [filter, setFilter] = useState('ALL');
+    const [currentPage, setCurrentPage] = useState(1);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState(null);
 
-    const fetchUsers = useCallback(async () => {
+    const fetchUsers = useCallback(async (pageToFetch) => {
         setIsLoading(true);
         try {
-            const endpoint = filter === 'ALL' ? '/admin/users' : `/admin/users?status=${filter}`;
-            const data = await request(endpoint);
-            setUsers(data || []);
+            const endpoint = `/admin/users?status=${filter}&page=${pageToFetch}&pageSize=10`;
+            const response = await request(endpoint);
+            setUsers(response.data || []);
+            setPagination(response.pagination || null);
         } catch (error) {
             console.error("Failed to fetch users", error);
             alert(`Failed to fetch users: ${error.message}`);
@@ -147,25 +210,31 @@ const UsersPage = ({ request, token }) => {
     }, [request, filter]);
 
     useEffect(() => {
-        fetchUsers();
-    }, [fetchUsers]);
+        setCurrentPage(1);
+        fetchUsers(1);
+    }, [filter]);
+
+    const handlePageChange = (newPage) => {
+        setCurrentPage(newPage);
+        fetchUsers(newPage);
+    };
 
     const handleApprove = async (userId) => {
         if (window.confirm(`Are you sure you want to approve user ID: ${userId}?`)) {
             try {
                 await request(`/admin/users/${userId}/approve`, 'PUT');
-                fetchUsers();
+                fetchUsers(currentPage);
             } catch (error) {
                 alert(`Failed to approve user: ${error.message}`);
             }
         }
     };
-    
+
     const handleReject = async (userId) => {
-         if (window.confirm(`Are you sure you want to reject user ID: ${userId}?`)) {
+        if (window.confirm(`Are you sure you want to reject user ID: ${userId}?`)) {
             try {
                 await request(`/admin/users/${userId}/reject`, 'PUT');
-                fetchUsers();
+                fetchUsers(currentPage);
             } catch (error) {
                 alert(`Failed to reject user: ${error.message}`);
             }
@@ -182,7 +251,7 @@ const UsersPage = ({ request, token }) => {
             try {
                 await request(`/admin/users/${userId}`, 'DELETE');
                 alert('User deleted successfully.');
-                fetchUsers();
+                fetchUsers(currentPage);
             } catch (error) {
                 alert(`Failed to delete user: ${error.message}`);
             }
@@ -196,10 +265,8 @@ const UsersPage = ({ request, token }) => {
 
     const handleModalSuccess = () => {
         handleModalClose();
-        fetchUsers();
+        fetchUsers(currentPage);
     };
-
-    const filteredUsers = users;
 
     if (isLoading) return <LoadingComponent />;
 
@@ -212,13 +279,14 @@ const UsersPage = ({ request, token }) => {
                 .status-approved { background-color: #22c55e; color: white; }
                 .status-rejected { background-color: #ef4444; color: white; }
             `}</style>
-            
+
             <EditUserModal
                 isOpen={isEditModalOpen}
                 onClose={handleModalClose}
                 onSuccess={handleModalSuccess}
                 token={token}
                 user={editingUser}
+                currentUser={currentUser}
             />
 
             <div className="page-header">
@@ -226,7 +294,7 @@ const UsersPage = ({ request, token }) => {
                     <h1>User Management</h1>
                     <p>Approve, reject, and manage all registered users.</p>
                 </div>
-                 <div className="filter-buttons">
+                <div className="filter-buttons">
                     <button onClick={() => setFilter('ALL')} className={`button ${filter === 'ALL' ? 'button-primary' : 'button-secondary'}`}>All</button>
                     <button onClick={() => setFilter('PENDING')} className={`button ${filter === 'PENDING' ? 'button-primary' : 'button-secondary'}`}>Pending</button>
                     <button onClick={() => setFilter('APPROVED')} className={`button ${filter === 'APPROVED' ? 'button-primary' : 'button-secondary'}`}>Approved</button>
@@ -247,14 +315,14 @@ const UsersPage = ({ request, token }) => {
                         </tr>
                     </thead>
                     <tbody>
-                        {filteredUsers.length > 0 ? filteredUsers.map(user => (
+                        {users.length > 0 ? users.map(user => (
                             <tr key={user.id}>
                                 <td>
-                                    <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem'}}>
-                                        <img src={user.picture || `https://ui-avatars.com/api/?name=${user.nama}&background=1a1a2e&color=00f6ff`} alt={user.nama} style={{width: '40px', height: '40px', borderRadius: '50%'}} />
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                        <img src={user.picture || `https://ui-avatars.com/api/?name=${user.nama}&background=1a1a2e&color=00f6ff`} alt={user.nama} style={{ width: '40px', height: '40px', borderRadius: '50%' }} />
                                         <div>
                                             <p className="font-semibold text-white">{user.nama}</p>
-                                            <p style={{fontSize: '0.8rem', color: '#a0a0a0'}}>{user.email}</p>
+                                            <p style={{ fontSize: '0.8rem', color: '#a0a0a0' }}>{user.email}</p>
                                         </div>
                                     </div>
                                 </td>
@@ -285,15 +353,15 @@ const UsersPage = ({ request, token }) => {
                             </tr>
                         )) : (
                             <tr>
-                                <td colSpan="7" style={{textAlign: 'center', padding: '1.5rem'}}>No users found for this filter.</td>
+                                <td colSpan="7" style={{ textAlign: 'center', padding: '1.5rem' }}>No users found for this filter.</td>
                             </tr>
                         )}
                     </tbody>
                 </table>
             </div>
+            {pagination && <Pagination {...pagination} onPageChange={handlePageChange} />}
         </div>
     );
 };
 
 export default UsersPage;
-

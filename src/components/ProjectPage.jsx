@@ -1,8 +1,29 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 
+// Ikon yang dibutuhkan untuk halaman ini
 const ICONS = {
     plus: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>,
     trash: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>,
+};
+
+// --- Helper Components ---
+
+const Pagination = ({ currentPage, totalPages, onPageChange }) => {
+    if (totalPages <= 1) return null;
+
+    return (
+        <div className="flex justify-center items-center gap-4 mt-6">
+            <button onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1} className="button button-secondary disabled:opacity-50">
+                Previous
+            </button>
+            <span className="text-gray-400">
+                Page {currentPage} of {totalPages}
+            </span>
+            <button onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages} className="button button-secondary disabled:opacity-50">
+                Next
+            </button>
+        </div>
+    );
 };
 
 const ProjectModal = ({ isOpen, onClose, onSuccess, request, existingProject }) => {
@@ -10,6 +31,7 @@ const ProjectModal = ({ isOpen, onClose, onSuccess, request, existingProject }) 
     const [nilaiProyek, setNilaiProyek] = useState('');
     const [projectUrl, setProjectUrl] = useState('');
     const [iconUrl, setIconUrl] = useState('');
+    const [deskripsi, setDeskripsi] = useState('');
     const [fields, setFields] = useState([{ label: '', fieldType: 'TEXT' }]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     
@@ -21,12 +43,14 @@ const ProjectModal = ({ isOpen, onClose, onSuccess, request, existingProject }) 
             setNilaiProyek(existingProject.nilaiProyek?.toString() || '');
             setProjectUrl(existingProject.projectUrl || '');
             setIconUrl(existingProject.iconUrl || '');
+            setDeskripsi(existingProject.deskripsi || '');
             setFields(existingProject.fields?.length > 0 ? existingProject.fields.map(f => ({label: f.label, fieldType: f.fieldType})) : [{ label: '', fieldType: 'TEXT' }]);
         } else {
             setNamaProyek('');
             setNilaiProyek('');
             setProjectUrl('');
             setIconUrl('');
+            setDeskripsi('');
             setFields([{ label: '', fieldType: 'TEXT' }]);
         }
     }, [isOpen, existingProject, isEditMode]);
@@ -50,6 +74,7 @@ const ProjectModal = ({ isOpen, onClose, onSuccess, request, existingProject }) 
             nilaiProyek: parseFloat(nilaiProyek),
             projectUrl,
             iconUrl,
+            deskripsi,
             fields: fields.filter(f => f.label.trim() !== ''),
         };
 
@@ -95,6 +120,10 @@ const ProjectModal = ({ isOpen, onClose, onSuccess, request, existingProject }) 
                         <label htmlFor="projectUrl">Project URL (Opsional)</label>
                         <input id="projectUrl" type="text" value={projectUrl} onChange={e => setProjectUrl(e.target.value)} className="form-input" />
                     </div>
+                     <div className="form-group mt-4">
+                        <label htmlFor="deskripsi">Deskripsi (Opsional)</label>
+                        <textarea id="deskripsi" name="deskripsi" value={deskripsi} onChange={e => setDeskripsi(e.target.value)} className="form-input" rows="3"></textarea>
+                    </div>
                     
                     <h3 className="text-lg font-semibold mt-6 mb-2">Required Fields</h3>
                     {fields.map((field, index) => (
@@ -125,8 +154,12 @@ const ProjectModal = ({ isOpen, onClose, onSuccess, request, existingProject }) 
     );
 };
 
-const ProjectsPage = ({ request }) => { 
+
+// Komponen Utama Halaman Proyek
+const ProjectsPage = ({ request }) => {
     const [projects, setProjects] = useState([]);
+    const [pagination, setPagination] = useState(null);
+    const [currentPage, setCurrentPage] = useState(1);
     const [isLoading, setIsLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingProject, setEditingProject] = useState(null);
@@ -140,18 +173,28 @@ const ProjectsPage = ({ request }) => {
         }));
     }, [projects]);
 
-    const fetchProjects = useCallback(async () => {
+    const fetchProjects = useCallback(async (pageToFetch) => {
         setIsLoading(true);
         try {
-            const data = await request('/projects');
-            setProjects(data);
-        } catch (error) { console.error("Failed to fetch projects", error); }
+            const data = await request(`/projects?page=${pageToFetch}&pageSize=10`);
+            setProjects(data.data || []);
+            setPagination(data.pagination || null);
+        } catch (error) { 
+            console.error("Failed to fetch projects", error);
+            if (Array.isArray(error)) {
+                setProjects(error);
+            }
+        }
         finally { setIsLoading(false); }
     }, [request]);
 
     useEffect(() => {
-        fetchProjects();
-    }, [fetchProjects]);
+        fetchProjects(currentPage);
+    }, [fetchProjects, currentPage]);
+
+    const handlePageChange = (newPage) => {
+        setCurrentPage(newPage);
+    };
 
     const handleAddClick = () => {
         setEditingProject(null);
@@ -170,14 +213,14 @@ const ProjectsPage = ({ request }) => {
 
     const handleModalSuccess = () => {
         handleModalClose();
-        fetchProjects();
+        fetchProjects(currentPage);
     };
 
     const handleRemoveProject = async (projectId) => {
         if (window.confirm(`Apakah Anda yakin ingin menghapus proyek dengan ID: ${projectId}?`)) {
             try {
                 await request(`/admin/projects/${projectId}`, 'DELETE');
-                fetchProjects(); 
+                fetchProjects(currentPage); 
             } catch (error) {
                 alert(`Gagal menghapus proyek: ${error.message}`);
             }
@@ -258,6 +301,7 @@ const ProjectsPage = ({ request }) => {
                     </tbody>
                 </table>
             </div>
+            {pagination && <Pagination {...pagination} onPageChange={handlePageChange} />}
         </div>
     );
 };

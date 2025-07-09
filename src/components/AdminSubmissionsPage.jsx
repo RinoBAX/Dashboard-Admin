@@ -7,6 +7,37 @@ const LoadingComponent = () => (
     </div>
 );
 
+const Pagination = ({ currentPage, totalPages, onPageChange }) => {
+    const handlePrev = () => {
+        if (currentPage > 1) {
+            onPageChange(currentPage - 1);
+        }
+    };
+
+    const handleNext = () => {
+        if (currentPage < totalPages) {
+            onPageChange(currentPage + 1);
+        }
+    };
+
+    if (totalPages <= 1) return null;
+
+    return (
+        <div className="flex justify-center items-center gap-4 mt-6">
+            <button onClick={handlePrev} disabled={currentPage === 1} className="button button-secondary disabled:opacity-50">
+                Previous
+            </button>
+            <span className="text-gray-400">
+                Page {currentPage} of {totalPages}
+            </span>
+            <button onClick={handleNext} disabled={currentPage === totalPages} className="button button-secondary disabled:opacity-50">
+                Next
+            </button>
+        </div>
+    );
+};
+
+
 const SubmissionDetailModal = ({ submission, onClose, onApprove, onReject }) => {
     if (!submission) return null;
 
@@ -28,10 +59,10 @@ const SubmissionDetailModal = ({ submission, onClose, onApprove, onReject }) => 
                     </div>
                     <div>
                         <h4 className="text-lg font-semibold mt-4 mb-2">Submitted Data:</h4>
-                        <div className="p-4 rounded-lg bg-black bg-opacity-20 space-y-2">
+                        <div className="p-4 rounded-lg bg-black bg-opacity-20 space-y-2 max-h-64 overflow-y-auto">
                             {submission.values && submission.values.length > 0 ? (
                                 submission.values.map(value => (
-                                    <div key={value.id} className="border-b border-gray-700 pb-2 mb-2">
+                                    <div key={value.id} className="border-b border-gray-700 pb-2 mb-2 last:border-b-0">
                                         <p className="font-semibold text-cyan-400">{value.projectField?.label || 'Unknown Field'}</p>
                                         {value.projectField?.fieldType === 'IMAGE' || value.projectField?.fieldType === 'FILE' ? (
                                             <a href={value.value} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline break-all">
@@ -57,36 +88,44 @@ const SubmissionDetailModal = ({ submission, onClose, onApprove, onReject }) => 
         </div>
     );
 };
-
-const AdminSubmissionsPage = ({ request }) => { 
+const AdminSubmissionsPage = ({ request }) => {
     const [submissions, setSubmissions] = useState([]);
+    const [pagination, setPagination] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
-    const [filter, setFilter] = useState('PENDING'); // Default filter
+    const [filter, setFilter] = useState('PENDING');
+    const [currentPage, setCurrentPage] = useState(1);
     const [selectedSubmission, setSelectedSubmission] = useState(null);
 
-    const fetchSubmissions = useCallback(async () => {
+    const fetchSubmissions = useCallback(async (pageToFetch) => {
         setIsLoading(true);
         try {
-            const endpoint = filter === 'ALL' ? '/admin/submissions' : `/admin/submissions?status=${filter}`;
-            const data = await request(endpoint);
-            setSubmissions(data || []);
+            const endpoint = `/admin/submissions?status=${filter}&page=${pageToFetch}&pageSize=10`;
+            const response = await request(endpoint);
+            setSubmissions(response.data || []);
+            setPagination(response.pagination || null);
         } catch (error) {
             console.error("Failed to fetch submissions", error);
             alert(`Failed to fetch submissions: ${error.message}`);
         } finally {
             setIsLoading(false);
         }
-    }, [request, filter]); 
+    }, [request, filter]);
 
     useEffect(() => {
-        fetchSubmissions();
-    }, [fetchSubmissions]);
+        setCurrentPage(1);
+        fetchSubmissions(1);
+    }, [filter]); 
+
+    const handlePageChange = (newPage) => {
+        setCurrentPage(newPage);
+        fetchSubmissions(newPage);
+    };
 
     const handleApprove = async (submissionId) => {
         if (window.confirm(`Are you sure you want to approve submission ID: ${submissionId}?`)) {
             try {
                 await request(`/admin/submissions/${submissionId}/approve`, 'PUT');
-                fetchSubmissions();
+                fetchSubmissions(currentPage);
                 setSelectedSubmission(null);
             } catch (error) {
                 alert(`Failed to approve submission: ${error.message}`);
@@ -99,7 +138,7 @@ const AdminSubmissionsPage = ({ request }) => {
         if (reason) {
             try {
                 await request(`/admin/submissions/${submissionId}/reject`, 'PUT', { catatanAdmin: reason });
-                fetchSubmissions();
+                fetchSubmissions(currentPage);
                 setSelectedSubmission(null);
             } catch (error) {
                 alert(`Failed to reject submission: ${error.message}`);
@@ -167,7 +206,7 @@ const AdminSubmissionsPage = ({ request }) => {
                     </thead>
                     <tbody>
                         {isLoading ? (
-                            <tr><td colSpan="5"><LoadingComponent /></td></tr>
+                            <tr><td colSpan="5" className="text-center p-8"><div className="loader mx-auto"></div></td></tr>
                         ) : submissions.length > 0 ? submissions.map(submission => (
                             <tr key={submission.id}>
                                 <td>{submission.user?.nama || 'N/A'}</td>
@@ -190,6 +229,7 @@ const AdminSubmissionsPage = ({ request }) => {
                     </tbody>
                 </table>
             </div>
+            {pagination && <Pagination {...pagination} onPageChange={handlePageChange} />}
         </div>
     );
 };

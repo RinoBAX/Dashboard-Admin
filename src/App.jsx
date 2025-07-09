@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import * as THREE from 'three';
-import { useApi } from './hooks/useApi'; // Impor hook baru
+import { useApi } from './hooks/useApi';
 
-// Impor komponen yang telah dipisahkan
 import DashboardPage from './components/DashboardPage';
 import ProjectsPage from './components/ProjectPage';
 import UsersPage from './components/UsersPage';
@@ -13,7 +12,6 @@ import Sidebar from './components/Sidebar';
 import LoadingComponent from './components/LoadingComponent';
 import GlobalStyles from './components/GlobalStyles';
 
-// --- MAIN APP COMPONENT ---
 function App() {
     const [token, setTokenState] = useState(() => localStorage.getItem('adminToken'));
     const [user, setUserState] = useState(() => {
@@ -23,7 +21,6 @@ function App() {
     const [page, setPage] = useState('dashboard');
     const [isLoading, setIsLoading] = useState(true);
     const request = useApi(token);
-
     const setToken = (newToken) => {
         if (newToken) localStorage.setItem('adminToken', newToken);
         else localStorage.removeItem('adminToken');
@@ -45,10 +42,13 @@ function App() {
         const verifyToken = async () => {
             if (token) {
                 try {
-                    const profileData = await request('/users/me');
+                    const responseData = await request('/users/me');
+                    const profileData = responseData.profile;
                     if (profileData && (profileData.role === 'ADMIN' || profileData.role === 'SUPER_ADMIN')) {
-                       setUser(profileData);
-                    } else { handleLogout(); }
+                       setUser(profileData); 
+                    } else { 
+                        handleLogout(); 
+                    }
                 } catch (error) {
                     console.error("Token verification failed", error);
                     handleLogout();
@@ -58,8 +58,6 @@ function App() {
         };
         verifyToken();
     }, [token, request]);
-
-    // Background Animation Effect
     useEffect(() => {
         let scene, camera, renderer, crystal;
         const canvas = document.getElementById('bg-canvas');
@@ -122,7 +120,6 @@ function App() {
     const renderPage = () => {
         switch (page) {
             case 'dashboard': return <DashboardPage />;
-            // PERBAIKAN: Meneruskan `request` sebagai prop ke semua halaman
             case 'projects': return <ProjectsPage request={request} />;
             case 'users': return <UsersPage request={request} token={token} />;
             case 'submissions': return <AdminSubmissionsPage request={request} />;
@@ -132,7 +129,7 @@ function App() {
     };
     
     if (isLoading) { return <LoadingComponent />; }
-    if (!token || !user) { return <LoginPage setToken={setToken} setUser={setUser} />; }
+    if (!token || !user) { return <LoginPage setToken={setToken} setUser={setUser} request={request} />; }
 
     return (
         <div className="app-layout">

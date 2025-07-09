@@ -1,0 +1,50 @@
+Tentu, ini adalah pertanyaan yang sangat bagus. Berdasarkan perubahan skema (penambahan info bank, deskripsi proyek) dan implementasi paginasi di backend, berikut adalah analisis file frontend mana saja yang perlu kita ubah:
+
+AdminSubmissionsPage.jsx: Perlu diubah.
+
+Alasan: Panggilan API-nya (/api/admin/submissions) sekarang mengembalikan data dengan format paginasi. Kita perlu menyesuaikan komponen untuk menangani objek data dan pagination yang baru, dan menambahkan UI untuk navigasi halaman.
+
+AdminWithdrawalsPage.jsx: Perlu diubah.
+
+Alasan: Sama seperti halaman submission, endpoint-nya (/api/superadmin/withdrawals) sekarang juga akan menggunakan paginasi.
+
+DashboardPage.jsx: Tidak perlu diubah.
+
+Alasan: Halaman ini masih menggunakan data statis dan tidak terpengaruh oleh perubahan di backend.
+
+GlobalStyles.jsx: Tidak perlu diubah.
+
+Alasan: Ini hanya berisi CSS dan tidak terpengaruh oleh logika data.
+
+LoadingComponent.jsx: Tidak perlu diubah.
+
+Alasan: Komponen ini bersifat generik dan tidak memiliki logika data.
+
+LoginPage.jsx: Perlu diubah.
+
+Alasan: Endpoint registrasi sekarang bisa menerima bankName dan noRekening. Meskipun tidak wajib, sebaiknya formulir registrasi (jika ada di sini atau di halaman terpisah) diperbarui untuk menyertakan field-field ini.
+
+ProjectsPage.jsx: Perlu diubah.
+
+Alasan: Komponen modal AddProjectModal dan EditProjectModal perlu diperbarui untuk menyertakan input deskripsi proyek.
+
+Sidebar.jsx: Tidak perlu diubah.
+
+Alasan: Komponen ini hanya menangani navigasi dan tidak terpengaruh oleh perubahan data.
+
+UsersPage.jsx: Perlu diubah.
+
+Alasan: Sama seperti halaman submission, panggilan API-nya (/api/admin/users) sekarang menggunakan paginasi. Kita perlu menyesuaikan komponen untuk menangani format respons yang baru dan menambahkan UI paginasi. Selain itu, EditUserModal perlu diperbarui untuk menyertakan input bankName dan noRekening.
+
+App.jsx: Perlu diubah.
+
+Alasan: Endpoint /api/users/me sekarang mendukung paginasi untuk submissions dan downlines. Kita perlu menyesuaikan cara data ini diambil dan ditampilkan jika ada UI yang bergantung padanya.
+
+Singkatnya, hampir semua komponen yang melakukan panggilan API untuk mengambil daftar data (list) perlu diperbarui untuk menangani paginasi.
+
+
+
+
+
+
+
