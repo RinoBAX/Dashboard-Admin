@@ -49,27 +49,33 @@ const SubmissionDetailModal = ({ submission, onClose, onApprove, onReject }) => 
                     <button onClick={onClose} className="text-2xl">&times;</button>
                 </div>
                 <div className="space-y-4">
-                    <div>
-                        <p className="text-sm text-gray-400">User</p>
-                        <p className="font-semibold">{submission.user?.nama || 'N/A'}</p>
-                    </div>
-                    <div>
-                        <p className="text-sm text-gray-400">Project</p>
-                        <p className="font-semibold">{submission.project?.namaProyek || 'N/A'}</p>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <p className="text-sm text-gray-400">User</p>
+                            <p className="font-semibold">{submission.user?.nama || 'N/A'}</p>
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-400">Project</p>
+                            <p className="font-semibold">{submission.project?.namaProyek || 'N/A'}</p>
+                        </div>
                     </div>
                     <div>
                         <h4 className="text-lg font-semibold mt-4 mb-2">Submitted Data:</h4>
-                        <div className="p-4 rounded-lg bg-black bg-opacity-20 space-y-2 max-h-64 overflow-y-auto">
+                        <div className="p-4 rounded-lg bg-black bg-opacity-20 space-y-3 max-h-64 overflow-y-auto">
                             {submission.values && submission.values.length > 0 ? (
                                 submission.values.map(value => (
-                                    <div key={value.id} className="border-b border-gray-700 pb-2 mb-2 last:border-b-0">
-                                        <p className="font-semibold text-cyan-400">{value.projectField?.label || 'Unknown Field'}</p>
-                                        {value.projectField?.fieldType === 'IMAGE' || value.projectField?.fieldType === 'FILE' ? (
+                                    <div key={value.id} className="border-b border-gray-700 pb-3 mb-3 last:border-b-0 last:pb-0 last:mb-0">
+                                        <p className="font-semibold text-cyan-400 mb-1">{value.projectField?.label || 'Unknown Field'}</p>
+                                        {value.projectField?.fieldType === 'IMAGE' ? (
+                                            <a href={value.value} target="_blank" rel="noopener noreferrer" title="Click to open in new tab">
+                                                <img src={value.value} alt="Submission preview" className="max-w-full h-auto rounded-md mt-1 border-2 border-gray-600 hover:border-cyan-400 transition" />
+                                            </a>
+                                        ) : value.projectField?.fieldType === 'FILE' ? (
                                             <a href={value.value} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline break-all">
                                                 View File: {value.value}
                                             </a>
                                         ) : (
-                                            <p className="text-white whitespace-pre-wrap break-words">{value.value}</p>
+                                            <p className="text-white whitespace-pre-wrap break-words bg-gray-800 p-2 rounded-md">{value.value}</p>
                                         )}
                                     </div>
                                 ))

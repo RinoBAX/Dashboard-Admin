@@ -13,7 +13,7 @@ const Sidebar = ({ user, setPage, currentPage, handleLogout }) => {
         { name: 'Dashboard', icon: ICONS.dashboard, page: 'dashboard', roles: ['ADMIN', 'SUPER_ADMIN'] },
         { name: 'Projects', icon: ICONS.projects, page: 'projects', roles: ['ADMIN', 'SUPER_ADMIN'] },
         { name: 'Users', icon: ICONS.users, page: 'users', roles: ['ADMIN', 'SUPER_ADMIN'] },
-        { name: 'Submissions', icon: ICONS.submissions, page: 'submissions', roles: ['ADMIN'] },
+        { name: 'Submissions', icon: ICONS.submissions, page: 'submissions', roles: ['ADMIN', 'SUPER_ADMIN'] },
         { name: 'Withdrawals', icon: ICONS.withdrawals, page: 'withdrawals', roles: ['SUPER_ADMIN'] },
     ], []);
 
